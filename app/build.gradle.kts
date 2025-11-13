@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.hilt.ksp)
     alias(libs.plugins.hilt.android)
     alias(libs.plugins.room.android)
-    alias(libs.plugins.google.gms.google.services)
+    //alias(libs.plugins.google.gms.google.services)
 }
 
 android {
@@ -94,7 +94,7 @@ dependencies {
     implementation(libs.coil.compose)
 
     // For coroutines with Firebase
-    implementation(libs.kotlinx.coroutines.play.services)
+    //implementation(libs.kotlinx.coroutines.play.services)
 
     // Supabase
     implementation(libs.storage.kt)

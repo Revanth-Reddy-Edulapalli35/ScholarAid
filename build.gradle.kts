@@ -6,5 +6,5 @@ plugins {
     alias(libs.plugins.hilt.android) apply false
     alias(libs.plugins.room.android) apply false
     alias(libs.plugins.hilt.ksp) apply false
-    alias(libs.plugins.google.gms.google.services) apply false
+    //alias(libs.plugins.google.gms.google.services) apply false
 }
