@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.scholaraid.ui.theme
+package uk.ac.tees.mad.scholaraid.presentation.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

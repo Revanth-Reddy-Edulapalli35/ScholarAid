@@ -28,6 +28,8 @@ coilCompose = "2.7.0"
 ktorClientAndroid = "3.3.1"
 kotlinxCoroutinesPlayServices = "1.10.2"
 googleGmsGoogleServices = "4.4.4"
+firebaseAuth = "24.0.1"
+firebaseFirestore = "26.0.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -87,6 +89,8 @@ compose-shimmer = { module = "com.valentinilk.shimmer:compose-shimmer", version.
 
 #Pull to Refresh
 accompanist-swiperefresh = { module = "com.google.accompanist:accompanist-swiperefresh", version.ref = "accompanistSwiperefresh" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth", version.ref = "firebaseAuth" }
+firebase-firestore = { group = "com.google.firebase", name = "firebase-firestore", version.ref = "firebaseFirestore" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
