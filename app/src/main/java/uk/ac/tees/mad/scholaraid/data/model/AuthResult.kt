@@ -1,4 +1,4 @@
-package uk.ac.tees.mad.fixit.data.model
+package uk.ac.tees.mad.scholaraid.data.model
 
 sealed class AuthResult {
     data class Success(val userId: String) : AuthResult()
