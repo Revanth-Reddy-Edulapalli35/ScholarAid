@@ -17,17 +17,17 @@ object NetworkModule {
 
     private const val BASE_URL = "https://api.example.com/v1/" // Replace with actual API
 
-    @Provides
-    @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
-        return OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            })
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .build()
-    }
+//    @Provides
+//    @Singleton
+//    fun provideOkHttpClient(): OkHttpClient {
+//        return OkHttpClient.Builder()
+//            .addInterceptor(HttpLoggingInterceptor().apply {
+//                level = HttpLoggingInterceptor.Level.BODY
+//            })
+//            .connectTimeout(30, TimeUnit.SECONDS)
+//            .readTimeout(30, TimeUnit.SECONDS)
+//            .build()
+//    }
 
     @Provides
     @Singleton

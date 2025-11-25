@@ -1,5 +1,7 @@
 package uk.ac.tees.mad.scholaraid.data.util
 
+import kotlinx.coroutines.flow.Flow
+
 interface ConnectivityObserver {
     fun observe(): Flow<Status>
 

@@ -9,15 +9,15 @@ import uk.ac.tees.mad.scholaraid.data.remote.dto.ScholarshipResponse
 
 interface ScholarshipApiService {
 
-    @GET("scholarships")
-    suspend fun getScholarships(
-        @Query("level") level: String? = null,
-        @Query("field") field: String? = null,
-        @Query("country") country: String? = null
-    ): Response<ScholarshipResponse>
-
-    @GET("scholarships/{id}")
-    suspend fun getScholarshipById(
-        @Path("id") id: String
-    ): Response<ScholarshipDto>
+//    @GET("scholarships")
+//    suspend fun getScholarships(
+//        @Query("level") level: String? = null,
+//        @Query("field") field: String? = null,
+//        @Query("country") country: String? = null
+//    ): Response<ScholarshipResponse>
+//
+//    @GET("scholarships/{id}")
+//    suspend fun getScholarshipById(
+//        @Path("id") id: String
+//    ): Response<ScholarshipDto>
 }

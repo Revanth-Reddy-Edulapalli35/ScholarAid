@@ -1,206 +1,159 @@
-package uk.ac.tees.mad.fixit.presentation.feature.auth
+package uk.ac.tees.mad.scholaraid.presentation.auth
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Build
-import androidx.compose.material3.*
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import uk.ac.tees.mad.fixit.presentation.navigation.Screen
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import kotlinx.coroutines.flow.collectLatest
+import uk.ac.tees.mad.scholaraid.R
+import uk.ac.tees.mad.scholaraid.presentation.auth.components.LoginForm
+import uk.ac.tees.mad.scholaraid.presentation.auth.components.RegisterForm
+import uk.ac.tees.mad.scholaraid.ui.theme.PrimaryBlue
 
 @Composable
 fun AuthScreen(
-    navController: NavHostController,
-    viewModel: AuthViewModel = viewModel()
+    navController: NavController,
+    viewModel: AuthViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    var selectedTab by remember { mutableIntStateOf(0) }
-    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    val state = viewModel.state
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Navigate to home on successful authentication
-    LaunchedEffect(uiState.isSuccess) {
-        if (uiState.isSuccess) {
-            navController.navigate(Screen.Main.route) {
-                popUpTo(Screen.Auth.route) { inclusive = true }
+    // Handle navigation on success
+    LaunchedEffect(key1 = state.isSuccess) {
+        if (state.isSuccess) {
+            navController.navigate("profile_setup_screen") {
+                popUpTo("auth_screen") { inclusive = true }
             }
+        }
+    }
+
+    // Show error messages
+    LaunchedEffect(key1 = state.errorMessage) {
+        state.errorMessage?.let { error ->
+            snackbarHostState.showSnackbar(
+                message = error,
+                duration = SnackbarDuration.Short
+            )
+            viewModel.onEvent(AuthEvent.ClearError)
         }
     }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFF1976D2),
-                        Color(0xFF1565C0)
-                    )
-                )
-            )
+            .background(Color.White)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(60.dp))
 
-            // App Logo and Title
-            Icon(
-                imageVector = Icons.Default.Build,
-                contentDescription = "FixIt Logo",
-                tint = Color.White,
+            // Logo
+            Image(
+                painter = painterResource(id = R.drawable.ic_scholar_aid_logo),
+                contentDescription = "ScholarAid Logo",
                 modifier = Modifier.size(80.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
+            // Title
             Text(
-                text = "FixIt",
-                fontSize = 36.sp,
+                text = if (state.isLoginMode) "Welcome Back" else "Create Account",
+                color = PrimaryBlue,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                textAlign = TextAlign.Center
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = "Report civic issues effortlessly",
-                fontSize = 14.sp,
-                color = Color.White.copy(alpha = 0.9f)
+                text = if (state.isLoginMode) "Sign in to continue" else "Join ScholarAid today",
+                color = Color.Gray,
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Authentication Card
+            // Auth Form Card
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 8.dp
-                )
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp)
-                ) {
-                    // Tab Row for Login/Sign Up
-                    TabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = Color.Transparent,
-                        contentColor = Color(0xFF1976D2),
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                                color = Color(0xFF1976D2)
-                            )
-                        }
-                    ) {
-                        Tab(
-                            selected = selectedTab == 0,
-                            onClick = { selectedTab = 0 },
-                            text = {
-                                Text(
-                                    text = "Login",
-                                    fontWeight = if (selectedTab == 0) FontWeight.Bold
-                                    else FontWeight.Normal
-                                )
-                            }
-                        )
-                        Tab(
-                            selected = selectedTab == 1,
-                            onClick = { selectedTab = 1 },
-                            text = {
-                                Text(
-                                    text = "Sign Up",
-                                    fontWeight = if (selectedTab == 1) FontWeight.Bold
-                                    else FontWeight.Normal
-                                )
-                            }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Form Content
-                    when (selectedTab) {
-                        0 -> LoginForm(
-                            viewModel = viewModel,
-                            uiState = uiState,
-                            onForgotPassword = { showForgotPasswordDialog = true }
-                        )
-                        1 -> SignUpForm(
-                            viewModel = viewModel,
-                            uiState = uiState
-                        )
-                    }
-                }
-            }
-
-            // Error/Success Message
-            uiState.errorMessage?.let { message ->
-                Spacer(modifier = Modifier.height(16.dp))
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (message.startsWith("✓"))
-                            Color(0xFFC8E6C9) else Color(0xFFFFEBEE)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = message,
-                        color = if (message.startsWith("✓"))
-                            Color(0xFF2E7D32) else Color(0xFFC62828),
-                        modifier = Modifier.padding(12.dp),
-                        style = MaterialTheme.typography.bodyMedium
+                if (state.isLoginMode) {
+                    LoginForm(
+                        state = state,
+                        onEvent = viewModel::onEvent
+                    )
+                } else {
+                    RegisterForm(
+                        state = state,
+                        onEvent = viewModel::onEvent
                     )
                 }
             }
         }
 
-        // Loading Overlay
-        if (uiState.isLoading) {
+        // Loading Indicator
+        if (state.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f)),
+                    .background(Color.Black.copy(alpha = 0.3f)),
                 contentAlignment = Alignment.Center
             ) {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White
-                    )
+                    shape = RoundedCornerShape(16.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier.padding(24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(32.dp)
+                        CircularProgressIndicator(color = PrimaryBlue)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = if (state.isLoginMode) "Signing In..." else "Creating Account...",
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        Text("Please wait...")
                     }
                 }
             }
         }
-    }
-
-    // Forgot Password Dialog
-    if (showForgotPasswordDialog) {
-        ForgotPasswordDialog(
-            viewModel = viewModel,
-            onDismiss = { showForgotPasswordDialog = false }
-        )
     }
 }
