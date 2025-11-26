@@ -12,39 +12,6 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 
 object ImageUtil {
-
-    suspend fun compressImage(context: Context, uri: Uri, maxSize: Int = 1024): ByteArray? {
-        return withContext(Dispatchers.IO) {
-            try {
-                context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    // Decode image with options to reduce memory
-                    val options = BitmapFactory.Options().apply {
-                        inJustDecodeBounds = true
-                    }
-                    BitmapFactory.decodeStream(inputStream, null, options)
-
-                    // Calculate sample size
-                    options.inSampleSize = calculateInSampleSize(options, maxSize, maxSize)
-                    options.inJustDecodeBounds = false
-
-                    // Decode bitmap with new options
-                    context.contentResolver.openInputStream(uri)?.use { newStream ->
-                        var bitmap = BitmapFactory.decodeStream(newStream, null, options)
-
-                        // Rotate bitmap if needed
-                        bitmap = rotateBitmapIfRequired(context, bitmap, uri)
-
-                        // Compress to byte array
-                        compressBitmap(bitmap, 80) // 80% quality
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                null
-            }
-        }
-    }
-
     private fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
         val height = options.outHeight
         val width = options.outWidth
@@ -88,6 +55,7 @@ object ImageUtil {
         }
     }
 
+
     private fun compressBitmap(bitmap: Bitmap?, quality: Int): ByteArray? {
         if (bitmap == null) return null
 
@@ -100,6 +68,38 @@ object ImageUtil {
             null
         } finally {
             bitmap.recycle()
+        }
+    }
+
+    suspend fun compressImage(context: Context, uri: Uri, maxSize: Int = 1024): ByteArray? {
+        return withContext(Dispatchers.IO) {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    // Decode image with options to reduce memory
+                    val options = BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
+                    BitmapFactory.decodeStream(inputStream, null, options)
+
+                    // Calculate sample size
+                    options.inSampleSize = calculateInSampleSize(options, maxSize, maxSize)
+                    options.inJustDecodeBounds = false
+
+                    // Decode bitmap with new options
+                    context.contentResolver.openInputStream(uri)?.use { newStream ->
+                        var bitmap = BitmapFactory.decodeStream(newStream, null, options)
+
+                        // Rotate bitmap if needed
+                        bitmap = rotateBitmapIfRequired(context, bitmap, uri)
+
+                        // Compress to byte array
+                        compressBitmap(bitmap, 80) // 80% quality
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
         }
     }
 }

@@ -23,13 +23,22 @@ class AuthViewModel @Inject constructor(
     fun onEvent(event: AuthEvent) {
         when (event) {
             is AuthEvent.EmailChanged -> {
-                _state.update { it.copy(email = event.email) }
+                _state.update { it.copy(
+                    email = event.email,
+                    emailError = null
+                ) }
             }
             is AuthEvent.PasswordChanged -> {
-                _state.update { it.copy(password = event.password) }
+                _state.update { it.copy(
+                    password = event.password,
+                    passwordError = null
+                ) }
             }
             is AuthEvent.ConfirmPasswordChanged -> {
-                _state.update { it.copy(confirmPassword = event.confirmPassword) }
+                _state.update { it.copy(
+                    confirmPassword = event.confirmPassword,
+                    confirmPasswordError = null
+                ) }
             }
             AuthEvent.ToggleAuthMode -> {
                 _state.update { it.copy(
@@ -37,7 +46,11 @@ class AuthViewModel @Inject constructor(
                     emailError = null,
                     passwordError = null,
                     confirmPasswordError = null,
-                    errorMessage = null
+                    errorMessage = null,
+                    // Clear fields when switching modes
+                    email = "",
+                    password = "",
+                    confirmPassword = ""
                 ) }
             }
             AuthEvent.Login -> {
@@ -71,7 +84,10 @@ class AuthViewModel @Inject constructor(
             authRepository.loginUser(email, password).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
-                        _state.update { it.copy(isLoading = true) }
+                        _state.update { it.copy(
+                            isLoading = true,
+                            errorMessage = null
+                        ) }
                     }
                     is Resource.Success -> {
                         _state.update { it.copy(
@@ -113,7 +129,10 @@ class AuthViewModel @Inject constructor(
             authRepository.registerUser(email, password).collect { result ->
                 when (result) {
                     is Resource.Loading -> {
-                        _state.update { it.copy(isLoading = true) }
+                        _state.update { it.copy(
+                            isLoading = true,
+                            errorMessage = null
+                        ) }
                     }
                     is Resource.Success -> {
                         _state.update { it.copy(

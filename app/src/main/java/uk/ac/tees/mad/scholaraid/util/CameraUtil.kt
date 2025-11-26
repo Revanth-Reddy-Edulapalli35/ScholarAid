@@ -21,13 +21,16 @@ class CameraUtil(private val context: Context) {
             "JPEG_${timeStamp}_",
             ".jpg",
             storageDir
-        )
+        ).apply {
+            // Create the Pictures directory if it doesn't exist
+            parentFile?.mkdirs()
+        }
     }
 
     fun getImageUri(file: File): Uri {
         return FileProvider.getUriForFile(
             context,
-            "uk.ac.tees.mad.scholaraid.fileprovider",
+            "${context.packageName}.fileprovider",
             file
         )
     }
