@@ -26,8 +26,6 @@ sealed class ProfileSetupEvent {
         }
     }
 
-    object TakePhoto : ProfileSetupEvent()
-    object SelectFromGallery : ProfileSetupEvent()
     object SaveProfile : ProfileSetupEvent()
     object ClearError : ProfileSetupEvent()
 }

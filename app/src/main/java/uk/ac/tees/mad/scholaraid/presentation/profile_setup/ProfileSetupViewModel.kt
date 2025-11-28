@@ -3,6 +3,7 @@ package uk.ac.tees.mad.scholaraid.presentation.profile_setup
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,18 +55,17 @@ class ProfileSetupViewModel @Inject constructor(
                     profileImageUri = event.imageUri
                 ) }
             }
-            ProfileSetupEvent.TakePhoto -> {
-                // Handled in UI layer
-            }
-            ProfileSetupEvent.SelectFromGallery -> {
-                // Handled in UI layer
-            }
+            // FIX: Removed TakePhoto and SelectFromGallery
+            // This logic is better handled directly in the UI (Screen)
+            // as it involves permissions and launching ActivityResultLaunchers.
             ProfileSetupEvent.SaveProfile -> {
                 saveProfile()
             }
             ProfileSetupEvent.ClearError -> {
                 _state.update { it.copy(errorMessage = null) }
             }
+
+            else -> {}
         }
     }
 
@@ -100,65 +100,72 @@ class ProfileSetupViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
 
             try {
-                var profilePhotoUrl = ""
-
-                // Upload profile image if selected
-                _state.value.profileImageBytes?.let { imageBytes ->
+                // FIX: Refactored logic to handle image upload *before* saving profile data.
+                val imageBytes = _state.value.profileImageBytes
+                if (imageBytes != null) {
+                    // 1. If image exists, upload it first
                     userRepository.uploadProfileImage(currentUser.uid, imageBytes).collect { result ->
                         when (result) {
                             is Resource.Success -> {
-                                profilePhotoUrl = result.data ?: ""
+                                // 2. On success, save profile data WITH the new image URL
+                                val profilePhotoUrl = result.data ?: ""
+                                saveProfileData(currentUser, profilePhotoUrl)
                             }
                             is Resource.Error -> {
+                                // 3. On failure, stop and show error
                                 _state.update { it.copy(
                                     isLoading = false,
                                     errorMessage = result.message ?: "Failed to upload image"
                                 ) }
-                                return@collect
                             }
                             is Resource.Loading -> { }
                         }
                     }
-                }
-
-                // Create user profile
-                val userProfile = UserProfile(
-                    userId = currentUser.uid,
-                    email = currentUser.email ?: "",
-                    fullName = fullName,
-                    profilePhotoUrl = profilePhotoUrl,
-                    academicLevel = academicLevel,
-                    fieldOfStudy = fieldOfStudy,
-                    gpa = _state.value.gpa,
-                    university = _state.value.university
-                )
-
-                // Save profile to Firestore
-                userRepository.saveUserProfile(userProfile).collect { result ->
-                    when (result) {
-                        is Resource.Loading -> {
-                            _state.update { it.copy(isLoading = true) }
-                        }
-                        is Resource.Success -> {
-                            _state.update { it.copy(
-                                isLoading = false,
-                                isSuccess = true,
-                                errorMessage = null
-                            ) }
-                        }
-                        is Resource.Error -> {
-                            _state.update { it.copy(
-                                isLoading = false,
-                                errorMessage = result.message ?: "Failed to save profile"
-                            ) }
-                        }
-                    }
+                } else {
+                    // No image to upload, just save the profile data
+                    saveProfileData(currentUser, "")
                 }
             } catch (e: Exception) {
                 _state.update { it.copy(
                     isLoading = false,
                     errorMessage = e.localizedMessage ?: "Failed to save profile"
                 ) }
+            }
+        }
+    }
+
+    // FIX: Created a helper function to save profile data to avoid duplication.
+    private suspend fun saveProfileData(currentUser: FirebaseUser, profilePhotoUrl: String) {
+        val userProfile = UserProfile(
+            userId = currentUser.uid,
+            email = currentUser.email ?: "",
+            fullName = _state.value.fullName,
+            profilePhotoUrl = profilePhotoUrl,
+            academicLevel = _state.value.academicLevel,
+            fieldOfStudy = _state.value.fieldOfStudy,
+            gpa = _state.value.gpa,
+            university = _state.value.university
+        )
+
+        // Save profile to Firestore
+        userRepository.saveUserProfile(userProfile).collect { result ->
+            when (result) {
+                is Resource.Loading -> {
+                    _state.update { it.copy(isLoading = true) }
+                }
+                is Resource.Success -> {
+                    _state.update { it.copy(
+                        isLoading = false,
+                        isSuccess = true,
+                        errorMessage = null
+                    ) }
+                }
+                is Resource.Error -> {
+                    _state.update { it.copy(
+                        isLoading = false,
+                        errorMessage = result.message ?: "Failed to save profile"
+                    ) }
+                }
             }
         }
     }

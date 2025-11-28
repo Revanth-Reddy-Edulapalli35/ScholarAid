@@ -20,7 +20,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,6 +44,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,15 +61,12 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.scholaraid.R
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
 import uk.ac.tees.mad.scholaraid.util.ImageUtil
 import uk.ac.tees.mad.scholaraid.util.PermissionUtil
 import uk.ac.tees.mad.scholaraid.util.rememberCameraUtil
-import java.io.File
 
 // Define your primary color here or import from theme
 private val PrimaryBlue = Color(0xFF2196F3)
@@ -78,16 +77,18 @@ fun ProfileSetupScreen(
     navController: NavController,
     viewModel: ProfileSetupViewModel = hiltViewModel()
 ) {
-    // Collect state as State instead of accessing directly
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // FIX: Use rememberCoroutineScope() for lifecycle-aware coroutines
+    val scope = rememberCoroutineScope()
 
     // Camera utilities
     val cameraUtil = rememberCameraUtil(context)
 
     // Temporary file for camera photos
-    val tempImageFile = remember { mutableStateOf<File?>(null) }
+    // val tempImageFile = remember { mutableStateOf<File?>(null) } // Not needed if we just use the URI
     val tempImageUri = remember { mutableStateOf<Uri?>(null) }
 
     // Permissions
@@ -95,9 +96,38 @@ fun ProfileSetupScreen(
         permissions = PermissionUtil.cameraPermissions
     )
 
+    // Use gallery permissions logic from PermissionUtil
+    val galleryPermissions = PermissionUtil.galleryPermissions
     val galleryPermissionsState = rememberMultiplePermissionsState(
-        permissions = PermissionUtil.galleryPermissions
+        permissions = galleryPermissions
     )
+
+    // Function to process image from URI
+    fun processImageFromUri(uri: Uri, viewModel: ProfileSetupViewModel) {
+        viewModel.onEvent(ProfileSetupEvent.ClearError)
+
+        // FIX: Use the 'scope' from rememberCoroutineScope()
+        scope.launch {
+            try {
+                // ImageUtil.compressImage is a suspend function, it will run on IO dispatcher
+                val compressedImage = ImageUtil.compressImage(context, uri, 800) // Max 800px
+                compressedImage?.let { bytes ->
+                    viewModel.onEvent(
+                        ProfileSetupEvent.ProfileImageSelected(
+                            imageBytes = bytes,
+                            imageUri = uri.toString()
+                        )
+                    )
+                } ?: run {
+                    // FIX: Show snackbar from the coroutine scope
+                    snackbarHostState.showSnackbar("Failed to process image")
+                }
+            } catch (e: Exception) {
+                // FIX: Show snackbar from the coroutine scope
+                snackbarHostState.showSnackbar("Error processing image: ${e.message}")
+            }
+        }
+    }
 
     // Camera launcher
     val cameraLauncher = rememberLauncherForActivityResult(
@@ -105,14 +135,13 @@ fun ProfileSetupScreen(
         onResult = { success ->
             if (success) {
                 tempImageUri.value?.let { uri ->
-                    // Compress and process the image
                     processImageFromUri(uri, viewModel)
                 }
             }
         }
     )
 
-    // Gallery launcher (for single image selection)
+    // Gallery launcher
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
@@ -122,87 +151,26 @@ fun ProfileSetupScreen(
         }
     )
 
-    // Function to process image from URI
-    fun processImageFromUri(uri: Uri, viewModel: ProfileSetupViewModel) {
-        // Show loading state
-        viewModel.onEvent(ProfileSetupEvent.ClearError)
-
-        // Process image in background
-        CoroutineScope() {
-            launch(kotlinx.coroutines.Dispatchers.IO) {
-                try {
-                    val compressedImage = ImageUtil.compressImage(context, uri, 800) // Max 800px
-                    compressedImage?.let { bytes ->
-                        viewModel.onEvent(
-                            ProfileSetupEvent.ProfileImageSelected(
-                                imageBytes = bytes,
-                                imageUri = uri.toString()
-                            )
-                        )
-                    } ?: run {
-                        // Show error if compression fails
-                        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                            snackbarHostState.showSnackbar("Failed to process image")
-                        }
-                    }
-                } catch (e: Exception) {
-                    kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                        snackbarHostState.showSnackbar("Error processing image: ${e.message}")
-                    }
-                }
-            }
-        }
-    }
-
-    // Handle Take Photo event
-    LaunchedEffect(key1 = Unit) {
-        viewModel.onEvent.collectLatest { event ->
-            when (event) {
-                is ProfileSetupEvent.TakePhoto -> {
-                    if (cameraPermissionsState.allPermissionsGranted) {
-                        // Launch camera
-                        val file = cameraUtil.createImageFile()
-                        tempImageFile.value = file
-                        val uri = cameraUtil.getImageUri(file)
-                        tempImageUri.value = uri
-                        cameraLauncher.launch(uri)
-                    } else {
-                        // Request permissions
-                        cameraPermissionsState.launchMultiplePermissionRequest()
-                    }
-                }
-
-                is ProfileSetupEvent.SelectFromGallery -> {
-                    if (galleryPermissionsState.allPermissionsGranted || PermissionUtil.galleryPermissions.isEmpty()) {
-                        // Launch gallery
-                        galleryLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    } else {
-                        // Request permissions (for older Android versions)
-                        galleryPermissionsState.launchMultiplePermissionRequest()
-                    }
-                }
-
-                else -> {}
-            }
-        }
-    }
+    // FIX: Removed the broken LaunchedEffect that was collecting `viewModel.onEvent`
+    // The logic is now placed in the onClick handlers below.
 
     // Handle permission results
     LaunchedEffect(cameraPermissionsState.allPermissionsGranted) {
         if (cameraPermissionsState.allPermissionsGranted) {
-            // Permissions granted, you could automatically launch camera here if needed
+            // Permissions granted
         } else if (cameraPermissionsState.shouldShowRationale) {
-            snackbarHostState.showSnackbar("Camera permissions are required to take photos")
+            scope.launch { snackbarHostState.showSnackbar("Camera permissions are required") }
         }
     }
 
     // Handle success navigation
     LaunchedEffect(key1 = state.isSuccess) {
         if (state.isSuccess) {
+            // TODO: Update this navigation route if incorrect
             navController.navigate("browse_screen") {
                 popUpTo("profile_setup_screen") { inclusive = true }
+                // Also pop upTo auth graph if it's nested
+                // popUpTo("auth_graph") { inclusive = true }
             }
         }
     }
@@ -222,7 +190,7 @@ fun ProfileSetupScreen(
                 title = { Text("Complete Your Profile") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 }
             )
@@ -254,36 +222,40 @@ fun ProfileSetupScreen(
                         Box(
                             contentAlignment = Alignment.BottomEnd
                         ) {
-                            if (state.profileImageUri != null) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(state.profileImageUri),
-                                    contentDescription = "Profile Photo",
-                                    modifier = Modifier
-                                        .size(120.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
+                            val painter = if (state.profileImageUri != null) {
+                                rememberAsyncImagePainter(state.profileImageUri)
                             } else {
-                                Image(
-                                    painter = painterResource(id = R.drawable.splash_screen_icon),
-                                    contentDescription = "Default Profile",
-                                    modifier = Modifier
-                                        .size(120.dp)
-                                        .clip(CircleShape),
-                                    contentScale = ContentScale.Crop
-                                )
+                                painterResource(id = R.drawable.splash_screen_icon) // Ensure this drawable exists
                             }
 
+                            Image(
+                                painter = painter,
+                                contentDescription = "Profile Photo",
+                                modifier = Modifier
+                                    .size(120.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Gray),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            // FIX: Moved camera launch logic here
                             IconButton(
                                 onClick = {
-                                    viewModel.onEvent(ProfileSetupEvent.TakePhoto)
+                                    if (cameraPermissionsState.allPermissionsGranted) {
+                                        val file = cameraUtil.createImageFile()
+                                        val uri = cameraUtil.getImageUri(file)
+                                        tempImageUri.value = uri
+                                        cameraLauncher.launch(uri)
+                                    } else {
+                                        cameraPermissionsState.launchMultiplePermissionRequest()
+                                    }
                                 },
                                 modifier = Modifier
                                     .size(40.dp)
                                     .background(PrimaryBlue, CircleShape)
                             ) {
                                 Icon(
-                                    Icons.Default.CameraAlt,
+                                    Icons.Default.AccountCircle,
                                     contentDescription = "Take Photo",
                                     tint = Color.White
                                 )
@@ -296,16 +268,31 @@ fun ProfileSetupScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Button(
+                                // FIX: Moved camera launch logic here
                                 onClick = {
-                                    viewModel.onEvent(ProfileSetupEvent.TakePhoto)
+                                    if (cameraPermissionsState.allPermissionsGranted) {
+                                        val file = cameraUtil.createImageFile()
+                                        val uri = cameraUtil.getImageUri(file)
+                                        tempImageUri.value = uri
+                                        cameraLauncher.launch(uri)
+                                    } else {
+                                        cameraPermissionsState.launchMultiplePermissionRequest()
+                                    }
                                 }
                             ) {
                                 Text("Take Photo")
                             }
 
                             Button(
+                                // FIX: Moved gallery launch logic here
                                 onClick = {
-                                    viewModel.onEvent(ProfileSetupEvent.SelectFromGallery)
+                                    if (galleryPermissions.isEmpty() || galleryPermissionsState.allPermissionsGranted) {
+                                        galleryLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    } else {
+                                        galleryPermissionsState.launchMultiplePermissionRequest()
+                                    }
                                 }
                             ) {
                                 Text("Choose from Gallery")
@@ -324,7 +311,7 @@ fun ProfileSetupScreen(
 
                         if (galleryPermissionsState.shouldShowRationale) {
                             Text(
-                                text = "Storage permission is required to select photos from gallery",
+                                text = "Storage permission is required to select photos",
                                 color = Color.Red,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(top = 8.dp)
@@ -359,7 +346,7 @@ fun ProfileSetupScreen(
                             isError = state.fullNameError != null,
                             supportingText = {
                                 state.fullNameError?.let { error ->
-                                    Text(text = error)
+                                    Text(text = error, color = Color.Red) // Make error text red
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -385,12 +372,12 @@ fun ProfileSetupScreen(
                                 isError = state.academicLevelError != null,
                                 supportingText = {
                                     state.academicLevelError?.let { error ->
-                                        Text(text = error)
+                                        Text(text = error, color = Color.Red)
                                     }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor() // Required for dropdown
                             )
 
                             ExposedDropdownMenu(
@@ -431,12 +418,12 @@ fun ProfileSetupScreen(
                                 isError = state.fieldOfStudyError != null,
                                 supportingText = {
                                     state.fieldOfStudyError?.let { error ->
-                                        Text(text = error)
+                                        Text(text = error, color = Color.Red)
                                     }
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor()
+                                    .menuAnchor() // Required for dropdown
                             )
 
                             ExposedDropdownMenu(
