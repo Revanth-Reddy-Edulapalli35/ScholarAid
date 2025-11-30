@@ -2,6 +2,7 @@ package uk.ac.tees.mad.scholaraid.data.local.entities
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.Date
 
 @Entity(tableName = "scholarships")
 data class ScholarshipEntity(
@@ -17,5 +18,6 @@ data class ScholarshipEntity(
     val educationLevel: String,
     val applicationLink: String,
     val isSaved: Boolean,
-    val cachedAt: Long
+    val cachedAt: Long = System.currentTimeMillis(),
+    val lastUpdated: Long = System.currentTimeMillis()
 )

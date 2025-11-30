@@ -4,29 +4,38 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import jakarta.inject.Singleton
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import uk.ac.tees.mad.scholaraid.data.remote.ScholarshipApiService
+import java.util.concurrent.TimeUnit
+import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val BASE_URL = "https://api.example.com/v1/" // Replace with actual API
+    private const val BASE_URL = "https://api.scholarshipowl.com/v1/"
 
-//    @Provides
-//    @Singleton
-//    fun provideOkHttpClient(): OkHttpClient {
-//        return OkHttpClient.Builder()
-//            .addInterceptor(HttpLoggingInterceptor().apply {
-//                level = HttpLoggingInterceptor.Level.BODY
-//            })
-//            .connectTimeout(30, TimeUnit.SECONDS)
-//            .readTimeout(30, TimeUnit.SECONDS)
-//            .build()
-//    }
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("X-API-Key", "YOUR_API_KEY_HERE") // You'll need to get this from ScholarshipOwl
+                    .addHeader("Content-Type", "application/json")
+                    .build()
+                chain.proceed(request)
+            }
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
     @Provides
     @Singleton

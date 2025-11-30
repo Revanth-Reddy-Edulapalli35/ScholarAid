@@ -22,7 +22,8 @@ object DatabaseModule {
             context,
             ScholarAidDatabase::class.java,
             "scholaraid_database"
-        ).build()
+        ).fallbackToDestructiveMigration() // For development, remove in production
+            .build()
     }
 
     @Provides
