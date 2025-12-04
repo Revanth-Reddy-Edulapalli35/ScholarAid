@@ -1,19 +1,17 @@
 package uk.ac.tees.mad.scholaraid.presentation.auth.components
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import uk.ac.tees.mad.scholaraid.presentation.auth.AuthEvent
 import uk.ac.tees.mad.scholaraid.presentation.auth.AuthState
@@ -22,12 +20,14 @@ import uk.ac.tees.mad.scholaraid.presentation.auth.AuthState
 fun LoginForm(
     state: AuthState,
     onEvent: (AuthEvent) -> Unit,
+    onForgotPassword: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var passwordVisible by remember { mutableStateOf(false) }
+
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(16.dp)
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Email Field
         OutlinedTextField(
@@ -35,17 +35,15 @@ fun LoginForm(
             onValueChange = { onEvent(AuthEvent.EmailChanged(it)) },
             label = { Text("Email") },
             placeholder = { Text("Enter your email") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            isError = state.emailError != null,
-            supportingText = {
-                state.emailError?.let { error ->
-                    Text(text = error)
-                }
+            leadingIcon = {
+                Icon(Icons.Default.Email, contentDescription = "Email")
             },
+            singleLine = true,
+            isError = state.emailError != null,
+            supportingText = state.emailError?.let { { Text(it) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth()
         )
-
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Password Field
         OutlinedTextField(
@@ -53,36 +51,48 @@ fun LoginForm(
             onValueChange = { onEvent(AuthEvent.PasswordChanged(it)) },
             label = { Text("Password") },
             placeholder = { Text("Enter your password") },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            isError = state.passwordError != null,
-            supportingText = {
-                state.passwordError?.let { error ->
-                    Text(text = error)
+            leadingIcon = {
+                Icon(Icons.Default.Lock, contentDescription = "Password")
+            },
+            trailingIcon = {
+                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    Icon(
+                        imageVector = if (passwordVisible) Icons.Default.Email
+                        else Icons.Default.Email,
+                        contentDescription = if (passwordVisible) "Hide password"
+                        else "Show password"
+                    )
                 }
             },
+            visualTransformation = if (passwordVisible) VisualTransformation.None
+            else PasswordVisualTransformation(),
+            singleLine = true,
+            isError = state.passwordError != null,
+            supportingText = state.passwordError?.let { { Text(it) } },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Forgot Password Link
+        TextButton(
+            onClick = onForgotPassword,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Forgot Password?")
+        }
 
         // Login Button
         Button(
             onClick = { onEvent(AuthEvent.Login) },
-            enabled = !state.isLoading,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            enabled = !state.isLoading
         ) {
-            Text(text = if (state.isLoading) "Signing In..." else "Sign In")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Switch to Register
-        TextButton(
-            onClick = { onEvent(AuthEvent.ToggleAuthMode) },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Don't have an account? Sign Up")
+            Text(
+                text = if (state.isLoading) "Logging in..." else "Login",
+                style = MaterialTheme.typography.titleMedium
+            )
         }
     }
 }

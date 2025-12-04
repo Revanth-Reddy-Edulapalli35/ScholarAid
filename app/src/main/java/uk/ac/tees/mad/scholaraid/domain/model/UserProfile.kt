@@ -9,7 +9,8 @@ data class UserProfile(
     val fieldOfStudy: String = "",
     val gpa: String = "",
     val university: String = "",
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+    val savedScholarshipIds: List<String> = emptyList()
 ) {
     companion object {
         val ACADEMIC_LEVELS = listOf(

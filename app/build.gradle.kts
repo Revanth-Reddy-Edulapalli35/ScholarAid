@@ -110,6 +110,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.play.services)
 
     // Supabase
+    //implementation("io.supabase.kt:supabase-kt:2.2.0")
     implementation(libs.storage.kt)
     implementation(libs.postgrest.kt)
     implementation(libs.gotrue.kt)

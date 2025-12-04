@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
+import uk.ac.tees.mad.scholaraid.domain.repository.SupabaseImageRepository
 import uk.ac.tees.mad.scholaraid.domain.repository.UserRepository
 import uk.ac.tees.mad.scholaraid.util.Resource
 import javax.inject.Inject
@@ -17,7 +18,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileSetupViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val firebaseAuth: FirebaseAuth
+    private val firebaseAuth: FirebaseAuth,
+    private val imageRepository: SupabaseImageRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileSetupState())
@@ -65,7 +67,6 @@ class ProfileSetupViewModel @Inject constructor(
                 _state.update { it.copy(errorMessage = null) }
             }
 
-            else -> {}
         }
     }
 
@@ -104,7 +105,7 @@ class ProfileSetupViewModel @Inject constructor(
                 val imageBytes = _state.value.profileImageBytes
                 if (imageBytes != null) {
                     // 1. If image exists, upload it first
-                    userRepository.uploadProfileImage(currentUser.uid, imageBytes).collect { result ->
+                    imageRepository.uploadProfileImage(currentUser.uid, imageBytes).collect { result ->
                         when (result) {
                             is Resource.Success -> {
                                 // 2. On success, save profile data WITH the new image URL

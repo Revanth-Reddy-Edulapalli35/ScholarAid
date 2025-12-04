@@ -1,25 +1,26 @@
 package uk.ac.tees.mad.scholaraid.data.repository
 
-import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.firestore.snapshots
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
+import uk.ac.tees.mad.scholaraid.data.remote.SupabaseConfig
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
+import uk.ac.tees.mad.scholaraid.domain.repository.SupabaseImageRepository
 import uk.ac.tees.mad.scholaraid.domain.repository.UserRepository
 import uk.ac.tees.mad.scholaraid.util.Constants
 import uk.ac.tees.mad.scholaraid.util.Resource
-import java.util.UUID
 import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
-    private val firebaseAuth: FirebaseAuth,
     private val firestore: FirebaseFirestore,
-    private val storage: FirebaseStorage
+    private val imageRepository: SupabaseImageRepository
 ) : UserRepository {
 
-    override fun saveUserProfile(userProfile: UserProfile): Flow<Resource<Boolean>> = flow {
+    override suspend fun saveUserProfile(userProfile: UserProfile): Flow<Resource<Boolean>> = flow {
         emit(Resource.Loading())
         try {
             firestore.collection(Constants.USERS_COLLECTION)
@@ -51,18 +52,63 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun uploadProfileImage(userId: String, imageBytes: ByteArray): Flow<Resource<String>> = flow {
+    private fun getPublicUrl(path: String): String {
+        return "${SupabaseConfig.SUPABASE_URL}/storage/v1/object/public/${SupabaseConfig.STORAGE_BUCKET}/$path"
+    }
+
+    fun uploadProfileImage(userId: String, imageBytes: ByteArray): Flow<Resource<String>> {
+        return imageRepository.uploadProfileImage(userId, imageBytes)
+    }
+
+    override suspend fun updateUserProfile(userProfile: UserProfile): Resource<Boolean> {
+        return try {
+            firestore.collection(Constants.USERS_COLLECTION).document(userProfile.userId)
+                .set(userProfile) // Use set() to fully replace/update the document
+                .await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Failed to update user profile")
+        }
+    }
+
+    // --- New Function Implementations ---
+
+    override fun getSavedScholarshipIds(userId: String): Flow<Resource<List<String>>> = flow {
         emit(Resource.Loading())
         try {
-            val fileName = "profile_${userId}_${UUID.randomUUID()}.jpg"
-            val storageRef = storage.reference.child("profile_images/$fileName")
-
-            val uploadTask = storageRef.putBytes(imageBytes).await()
-            val downloadUrl = storageRef.downloadUrl.await()
-
-            emit(Resource.Success(downloadUrl.toString()))
+            val userDocRef = firestore.collection(Constants.USERS_COLLECTION).document(userId)
+            userDocRef.snapshots().map { snapshot ->
+                if (snapshot.exists()) {
+                    val profile = snapshot.toObject(UserProfile::class.java)
+                    Resource.Success(profile?.savedScholarshipIds ?: emptyList())
+                } else {
+                    Resource.Error("User profile not found")
+                }
+            }.collect { emit(it) }
         } catch (e: Exception) {
-            emit(Resource.Error(e.localizedMessage ?: "Failed to upload image"))
+            emit(Resource.Error(e.localizedMessage ?: "Failed to get saved scholarships"))
+        }
+    }
+
+    override suspend fun saveScholarship(userId: String, scholarshipId: String): Resource<Boolean> {
+        return try {
+            firestore.collection(Constants.USERS_COLLECTION).document(userId)
+                .update("savedScholarshipIds", FieldValue.arrayUnion(scholarshipId))
+                .await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Failed to save scholarship")
+        }
+    }
+
+    override suspend fun unsaveScholarship(userId: String, scholarshipId: String): Resource<Boolean> {
+        return try {
+            firestore.collection(Constants.USERS_COLLECTION).document(userId)
+                .update("savedScholarshipIds", FieldValue.arrayRemove(scholarshipId))
+                .await()
+            Resource.Success(true)
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Failed to unsave scholarship")
         }
     }
 }

@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -52,7 +51,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -62,8 +60,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import kotlinx.coroutines.launch
-import uk.ac.tees.mad.scholaraid.R
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
+import uk.ac.tees.mad.scholaraid.presentation.navigation.Screen
 import uk.ac.tees.mad.scholaraid.util.ImageUtil
 import uk.ac.tees.mad.scholaraid.util.PermissionUtil
 import uk.ac.tees.mad.scholaraid.util.rememberCameraUtil
@@ -81,36 +79,22 @@ fun ProfileSetupScreen(
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // FIX: Use rememberCoroutineScope() for lifecycle-aware coroutines
     val scope = rememberCoroutineScope()
-
-    // Camera utilities
     val cameraUtil = rememberCameraUtil(context)
-
-    // Temporary file for camera photos
-    // val tempImageFile = remember { mutableStateOf<File?>(null) } // Not needed if we just use the URI
     val tempImageUri = remember { mutableStateOf<Uri?>(null) }
-
-    // Permissions
     val cameraPermissionsState = rememberMultiplePermissionsState(
         permissions = PermissionUtil.cameraPermissions
     )
-
-    // Use gallery permissions logic from PermissionUtil
     val galleryPermissions = PermissionUtil.galleryPermissions
     val galleryPermissionsState = rememberMultiplePermissionsState(
         permissions = galleryPermissions
     )
 
-    // Function to process image from URI
     fun processImageFromUri(uri: Uri, viewModel: ProfileSetupViewModel) {
         viewModel.onEvent(ProfileSetupEvent.ClearError)
-
-        // FIX: Use the 'scope' from rememberCoroutineScope()
         scope.launch {
             try {
-                // ImageUtil.compressImage is a suspend function, it will run on IO dispatcher
-                val compressedImage = ImageUtil.compressImage(context, uri, 800) // Max 800px
+                val compressedImage = ImageUtil.compressImage(context, uri, 800)
                 compressedImage?.let { bytes ->
                     viewModel.onEvent(
                         ProfileSetupEvent.ProfileImageSelected(
@@ -119,17 +103,14 @@ fun ProfileSetupScreen(
                         )
                     )
                 } ?: run {
-                    // FIX: Show snackbar from the coroutine scope
                     snackbarHostState.showSnackbar("Failed to process image")
                 }
             } catch (e: Exception) {
-                // FIX: Show snackbar from the coroutine scope
                 snackbarHostState.showSnackbar("Error processing image: ${e.message}")
             }
         }
     }
 
-    // Camera launcher
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture(),
         onResult = { success ->
@@ -141,7 +122,6 @@ fun ProfileSetupScreen(
         }
     )
 
-    // Gallery launcher
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
@@ -151,10 +131,6 @@ fun ProfileSetupScreen(
         }
     )
 
-    // FIX: Removed the broken LaunchedEffect that was collecting `viewModel.onEvent`
-    // The logic is now placed in the onClick handlers below.
-
-    // Handle permission results
     LaunchedEffect(cameraPermissionsState.allPermissionsGranted) {
         if (cameraPermissionsState.allPermissionsGranted) {
             // Permissions granted
@@ -163,19 +139,15 @@ fun ProfileSetupScreen(
         }
     }
 
-    // Handle success navigation
     LaunchedEffect(key1 = state.isSuccess) {
         if (state.isSuccess) {
-            // TODO: Update this navigation route if incorrect
-            navController.navigate("browse_screen") {
-                popUpTo("profile_setup_screen") { inclusive = true }
-                // Also pop upTo auth graph if it's nested
-                // popUpTo("auth_graph") { inclusive = true }
+            navController.navigate(Screen.Main.route) {
+                popUpTo(Screen.ProfileSetup.route) { inclusive = true }
+                popUpTo(Screen.Auth.route) { inclusive = true }
             }
         }
     }
 
-    // Handle error messages
     LaunchedEffect(key1 = state.errorMessage) {
         state.errorMessage?.let { error ->
             snackbarHostState.showSnackbar(error)
@@ -187,12 +159,7 @@ fun ProfileSetupScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("Complete Your Profile") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
+                title = { Text("Complete Your Profile") }
             )
         }
     ) { paddingValues ->
@@ -222,23 +189,34 @@ fun ProfileSetupScreen(
                         Box(
                             contentAlignment = Alignment.BottomEnd
                         ) {
-                            val painter = if (state.profileImageUri != null) {
-                                rememberAsyncImagePainter(state.profileImageUri)
-                            } else {
-                                painterResource(id = R.drawable.splash_screen_icon) // Ensure this drawable exists
-                            }
 
-                            Image(
-                                painter = painter,
-                                contentDescription = "Profile Photo",
+                            // --- MODIFICATION START ---
+                            // This Box handles the main image/icon
+                            Box(
                                 modifier = Modifier
                                     .size(120.dp)
                                     .clip(CircleShape)
-                                    .background(Color.Gray),
-                                contentScale = ContentScale.Crop
-                            )
+                                    .background(Color.LightGray), // Lighter gray
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (state.profileImageUri != null) {
+                                    Image(
+                                        painter = rememberAsyncImagePainter(state.profileImageUri),
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier.fillMaxSize(), // Fill the box
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle, // Safe, built-in icon
+                                        contentDescription = "Profile Photo",
+                                        modifier = Modifier.size(80.dp),
+                                        tint = Color.Gray
+                                    )
+                                }
+                            }
+                            // --- MODIFICATION END ---
 
-                            // FIX: Moved camera launch logic here
                             IconButton(
                                 onClick = {
                                     if (cameraPermissionsState.allPermissionsGranted) {
@@ -255,7 +233,7 @@ fun ProfileSetupScreen(
                                     .background(PrimaryBlue, CircleShape)
                             ) {
                                 Icon(
-                                    Icons.Default.AccountCircle,
+                                    Icons.Default.AccountCircle, // Changed to a camera icon
                                     contentDescription = "Take Photo",
                                     tint = Color.White
                                 )
@@ -268,7 +246,6 @@ fun ProfileSetupScreen(
                             horizontalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Button(
-                                // FIX: Moved camera launch logic here
                                 onClick = {
                                     if (cameraPermissionsState.allPermissionsGranted) {
                                         val file = cameraUtil.createImageFile()
@@ -284,7 +261,6 @@ fun ProfileSetupScreen(
                             }
 
                             Button(
-                                // FIX: Moved gallery launch logic here
                                 onClick = {
                                     if (galleryPermissions.isEmpty() || galleryPermissionsState.allPermissionsGranted) {
                                         galleryLauncher.launch(
@@ -346,7 +322,7 @@ fun ProfileSetupScreen(
                             isError = state.fullNameError != null,
                             supportingText = {
                                 state.fullNameError?.let { error ->
-                                    Text(text = error, color = Color.Red) // Make error text red
+                                    Text(text = error, color = Color.Red)
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -377,7 +353,7 @@ fun ProfileSetupScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor() // Required for dropdown
+                                    .menuAnchor()
                             )
 
                             ExposedDropdownMenu(
@@ -423,7 +399,7 @@ fun ProfileSetupScreen(
                                 },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .menuAnchor() // Required for dropdown
+                                    .menuAnchor()
                             )
 
                             ExposedDropdownMenu(

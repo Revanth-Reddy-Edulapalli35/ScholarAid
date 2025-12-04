@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import uk.ac.tees.mad.scholaraid.presentation.auth.AuthScreen
 import uk.ac.tees.mad.scholaraid.presentation.profile_setup.ProfileSetupScreen
+import uk.ac.tees.mad.scholaraid.presentation.scholarship.ScholarshipListScreen
 import uk.ac.tees.mad.scholaraid.presentation.splash.SplashScreen
 
 @Composable
@@ -36,35 +37,8 @@ fun NavGraph() {
             ProfileSetupScreen(navController = navController)
         }
 
-        // Browse Screen (Main screen after login)
-        composable(route = Screen.Browse.route) {
-            BoxWithText(text = "Browse Screen - Coming Soon!\nScholarships will be displayed here.")
-        }
-
-        // Detail Screen
-        composable(route = Screen.Detail.route) {
-            BoxWithText(text = "Detail Screen - Coming Soon!")
-        }
-
-        // Saved Screen
-        composable(route = Screen.Saved.route) {
-            BoxWithText(text = "Saved Scholarships - Coming Soon!")
-        }
-
-        // Settings Screen
-        composable(route = Screen.Settings.route) {
-            BoxWithText(text = "Settings - Coming Soon!")
-        }
-    }
-}
-
-// Helper composable for placeholder screens
-@Composable
-fun BoxWithText(text: String) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Text(text = text)
+       composable(Screen.Main.route) {
+           MainScreen(mainNavController = navController)
+       }
     }
 }

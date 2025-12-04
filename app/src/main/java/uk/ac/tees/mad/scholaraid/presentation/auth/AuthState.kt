@@ -3,6 +3,7 @@ package uk.ac.tees.mad.scholaraid.presentation.auth
 data class AuthState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
+    val isNewUser: Boolean = false, // NEW: Track if user is new
     val errorMessage: String? = null,
 
     // Form fields

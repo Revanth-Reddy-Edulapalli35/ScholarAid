@@ -5,7 +5,12 @@ import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
 import uk.ac.tees.mad.scholaraid.util.Resource
 
 interface UserRepository {
-    fun saveUserProfile(userProfile: UserProfile): Flow<Resource<Boolean>>
+    suspend fun saveUserProfile(userProfile: UserProfile): Flow<Resource<Boolean>>
     fun getUserProfile(userId: String): Flow<Resource<UserProfile>>
-    fun uploadProfileImage(userId: String, imageBytes: ByteArray): Flow<Resource<String>>
+
+    suspend fun updateUserProfile(userProfile: UserProfile): Resource<Boolean>
+
+    fun getSavedScholarshipIds(userId: String): Flow<Resource<List<String>>>
+    suspend fun saveScholarship(userId: String, scholarshipId: String): Resource<Boolean>
+    suspend fun unsaveScholarship(userId: String, scholarshipId: String): Resource<Boolean>
 }
