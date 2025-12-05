@@ -1,15 +1,9 @@
 package uk.ac.tees.mad.scholaraid.presentation.profile_setup
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -30,7 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -43,33 +36,19 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import kotlinx.coroutines.launch
-import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
 import uk.ac.tees.mad.scholaraid.presentation.navigation.Screen
-import uk.ac.tees.mad.scholaraid.util.ImageUtil
-import uk.ac.tees.mad.scholaraid.util.PermissionUtil
-import uk.ac.tees.mad.scholaraid.util.rememberCameraUtil
 
-// Define your primary color here or import from theme
-private val PrimaryBlue = Color(0xFF2196F3)
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileSetupScreen(
     navController: NavController,
@@ -78,66 +57,6 @@ fun ProfileSetupScreen(
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
-
-    val scope = rememberCoroutineScope()
-    val cameraUtil = rememberCameraUtil(context)
-    val tempImageUri = remember { mutableStateOf<Uri?>(null) }
-    val cameraPermissionsState = rememberMultiplePermissionsState(
-        permissions = PermissionUtil.cameraPermissions
-    )
-    val galleryPermissions = PermissionUtil.galleryPermissions
-    val galleryPermissionsState = rememberMultiplePermissionsState(
-        permissions = galleryPermissions
-    )
-
-    fun processImageFromUri(uri: Uri, viewModel: ProfileSetupViewModel) {
-        viewModel.onEvent(ProfileSetupEvent.ClearError)
-        scope.launch {
-            try {
-                val compressedImage = ImageUtil.compressImage(context, uri, 800)
-                compressedImage?.let { bytes ->
-                    viewModel.onEvent(
-                        ProfileSetupEvent.ProfileImageSelected(
-                            imageBytes = bytes,
-                            imageUri = uri.toString()
-                        )
-                    )
-                } ?: run {
-                    snackbarHostState.showSnackbar("Failed to process image")
-                }
-            } catch (e: Exception) {
-                snackbarHostState.showSnackbar("Error processing image: ${e.message}")
-            }
-        }
-    }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-        onResult = { success ->
-            if (success) {
-                tempImageUri.value?.let { uri ->
-                    processImageFromUri(uri, viewModel)
-                }
-            }
-        }
-    )
-
-    val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia(),
-        onResult = { uri ->
-            uri?.let {
-                processImageFromUri(it, viewModel)
-            }
-        }
-    )
-
-    LaunchedEffect(cameraPermissionsState.allPermissionsGranted) {
-        if (cameraPermissionsState.allPermissionsGranted) {
-            // Permissions granted
-        } else if (cameraPermissionsState.shouldShowRationale) {
-            scope.launch { snackbarHostState.showSnackbar("Camera permissions are required") }
-        }
-    }
 
     LaunchedEffect(key1 = state.isSuccess) {
         if (state.isSuccess) {
@@ -176,127 +95,35 @@ fun ProfileSetupScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Profile Photo Section
-                Card(
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Box(
-                            contentAlignment = Alignment.BottomEnd
-                        ) {
+                // Profile Photo Section - Simplified with default icon only
+//                Card(
+//                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+//                ) {
+//                    Column(
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(16.dp),
+//                        horizontalAlignment = Alignment.CenterHorizontally
+//                    ) {
+//                        // Default Profile Icon
+//                        Icon(
+//                            imageVector = Icons.Default.AccountCircle,
+//                            contentDescription = "Default Profile Photo",
+//                            modifier = Modifier.size(120.dp),
+//                            tint = Color.Gray
+//                        )
+//
+//                        Spacer(modifier = Modifier.height(16.dp))
+//
+//                        Text(
+//                            text = "Default profile photo",
+//                            style = MaterialTheme.typography.bodyMedium,
+//                            color = MaterialTheme.colorScheme.onSurfaceVariant
+//                        )
+//                    }
+//                }
 
-                            // --- MODIFICATION START ---
-                            // This Box handles the main image/icon
-                            Box(
-                                modifier = Modifier
-                                    .size(120.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.LightGray), // Lighter gray
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (state.profileImageUri != null) {
-                                    Image(
-                                        painter = rememberAsyncImagePainter(state.profileImageUri),
-                                        contentDescription = "Profile Photo",
-                                        modifier = Modifier.fillMaxSize(), // Fill the box
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Default.AccountCircle, // Safe, built-in icon
-                                        contentDescription = "Profile Photo",
-                                        modifier = Modifier.size(80.dp),
-                                        tint = Color.Gray
-                                    )
-                                }
-                            }
-                            // --- MODIFICATION END ---
-
-                            IconButton(
-                                onClick = {
-                                    if (cameraPermissionsState.allPermissionsGranted) {
-                                        val file = cameraUtil.createImageFile()
-                                        val uri = cameraUtil.getImageUri(file)
-                                        tempImageUri.value = uri
-                                        cameraLauncher.launch(uri)
-                                    } else {
-                                        cameraPermissionsState.launchMultiplePermissionRequest()
-                                    }
-                                },
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(PrimaryBlue, CircleShape)
-                            ) {
-                                Icon(
-                                    Icons.Default.AccountCircle, // Changed to a camera icon
-                                    contentDescription = "Take Photo",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Button(
-                                onClick = {
-                                    if (cameraPermissionsState.allPermissionsGranted) {
-                                        val file = cameraUtil.createImageFile()
-                                        val uri = cameraUtil.getImageUri(file)
-                                        tempImageUri.value = uri
-                                        cameraLauncher.launch(uri)
-                                    } else {
-                                        cameraPermissionsState.launchMultiplePermissionRequest()
-                                    }
-                                }
-                            ) {
-                                Text("Take Photo")
-                            }
-
-                            Button(
-                                onClick = {
-                                    if (galleryPermissions.isEmpty() || galleryPermissionsState.allPermissionsGranted) {
-                                        galleryLauncher.launch(
-                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                        )
-                                    } else {
-                                        galleryPermissionsState.launchMultiplePermissionRequest()
-                                    }
-                                }
-                            ) {
-                                Text("Choose from Gallery")
-                            }
-                        }
-
-                        // Permission rationale
-                        if (cameraPermissionsState.shouldShowRationale) {
-                            Text(
-                                text = "Camera permission is required to take photos",
-                                color = Color.Red,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-
-                        if (galleryPermissionsState.shouldShowRationale) {
-                            Text(
-                                text = "Storage permission is required to select photos",
-                                color = Color.Red,
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Personal Information
+                // Personal Information Card (unchanged)
                 Card(
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
@@ -310,7 +137,7 @@ fun ProfileSetupScreen(
                             text = "Personal Information",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            color = PrimaryBlue
+                            color = MaterialTheme.colorScheme.primary
                         )
 
                         // Full Name
@@ -360,7 +187,7 @@ fun ProfileSetupScreen(
                                 expanded = academicLevelExpanded,
                                 onDismissRequest = { academicLevelExpanded = false }
                             ) {
-                                UserProfile.ACADEMIC_LEVELS.forEach { level ->
+                                uk.ac.tees.mad.scholaraid.domain.model.UserProfile.ACADEMIC_LEVELS.forEach { level ->
                                     DropdownMenuItem(
                                         text = { Text(level) },
                                         onClick = {
@@ -406,7 +233,7 @@ fun ProfileSetupScreen(
                                 expanded = fieldOfStudyExpanded,
                                 onDismissRequest = { fieldOfStudyExpanded = false }
                             ) {
-                                UserProfile.FIELDS_OF_STUDY.forEach { field ->
+                                uk.ac.tees.mad.scholaraid.domain.model.UserProfile.FIELDS_OF_STUDY.forEach { field ->
                                     DropdownMenuItem(
                                         text = { Text(field) },
                                         onClick = {
@@ -434,9 +261,7 @@ fun ProfileSetupScreen(
                             value = state.university,
                             onValueChange = {
                                 viewModel.onEvent(
-                                    ProfileSetupEvent.UniversityChanged(
-                                        it
-                                    )
+                                    ProfileSetupEvent.UniversityChanged(it)
                                 )
                             },
                             label = { Text("University (Optional)") },

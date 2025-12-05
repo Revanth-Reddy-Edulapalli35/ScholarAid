@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
-import uk.ac.tees.mad.scholaraid.domain.repository.SupabaseImageRepository
 import uk.ac.tees.mad.scholaraid.domain.repository.UserRepository
 import uk.ac.tees.mad.scholaraid.presentation.profile_setup.ProfileSetupEvent
 import uk.ac.tees.mad.scholaraid.presentation.profile_setup.ProfileSetupState
@@ -21,7 +20,6 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingViewModel @Inject constructor(
     private val userRepository: UserRepository,
-    private val imageRepository: SupabaseImageRepository, // Inject image repository
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
@@ -52,7 +50,7 @@ class SettingViewModel @Inject constructor(
                                     fieldOfStudy = profile.fieldOfStudy,
                                     gpa = profile.gpa,
                                     university = profile.university,
-                                    profileImageUri = profile.profilePhotoUrl
+                                    // profileImageUri is not used anymore
                                 )
                             }
                         } else {
@@ -72,14 +70,10 @@ class SettingViewModel @Inject constructor(
             is ProfileSetupEvent.FieldOfStudyChanged -> _state.update { it.copy(fieldOfStudy = event.fieldOfStudy, fieldOfStudyError = null) }
             is ProfileSetupEvent.GpaChanged -> _state.update { it.copy(gpa = event.gpa) }
             is ProfileSetupEvent.UniversityChanged -> _state.update { it.copy(university = event.university) }
-            is ProfileSetupEvent.ProfileImageSelected -> _state.update {
-                it.copy(
-                    profileImageBytes = event.imageBytes,
-                    profileImageUri = event.imageUri // Local URI for immediate preview
-                )
-            }
+            // Removed ProfileImageSelected event
             ProfileSetupEvent.SaveProfile -> saveUserProfile()
             ProfileSetupEvent.ClearError -> _state.update { it.copy(errorMessage = null) }
+            else -> {}
         }
     }
 
@@ -89,37 +83,17 @@ class SettingViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // 1. Handle image upload if a new one was selected
-            val imageUploadFlow = _state.value.profileImageBytes?.let { bytes ->
-                imageRepository.uploadProfileImage(userId, bytes)
-            }
-
-            if (imageUploadFlow != null) {
-                imageUploadFlow.collectLatest { resource ->
-                    when (resource) {
-                        is Resource.Loading -> _state.update { it.copy(isLoading = true) }
-                        is Resource.Success -> updateProfileData(resource.data)
-                        is Resource.Error -> _state.update {
-                            it.copy(
-                                isLoading = false,
-                                errorMessage = resource.message ?: "Image upload failed."
-                            )
-                        }
-                    }
-                }
-            } else {
-                // 2. If no new image, update profile with existing URL
-                updateProfileData(_state.value.profileImageUri)
-            }
+            // Update profile with empty profile photo URL
+            updateProfileData()
         }
     }
 
-    private suspend fun updateProfileData(profilePhotoUrl: String?) {
+    private suspend fun updateProfileData() {
         val userProfile = UserProfile(
             userId = userId,
             email = currentUser.email ?: "",
             fullName = _state.value.fullName,
-            profilePhotoUrl = profilePhotoUrl ?: "",
+            profilePhotoUrl = "", // Empty string - UI will use default image
             academicLevel = _state.value.academicLevel,
             fieldOfStudy = _state.value.fieldOfStudy,
             gpa = _state.value.gpa,
@@ -131,21 +105,19 @@ class SettingViewModel @Inject constructor(
             when (result) {
                 is Resource.Success -> it.copy(
                     isLoading = false,
-                    isSuccess = true, // Use isSuccess for navigation/snackbar
-                    errorMessage = null,
-                    profileImageBytes = null // Clear bytes after successful upload
+                    isSuccess = true,
+                    errorMessage = null
                 )
                 is Resource.Error -> it.copy(
                     isLoading = false,
                     errorMessage = result.message ?: "Failed to update profile."
                 )
-                else -> it.copy(isLoading = false) // Should not happen for suspend fun
+                else -> it.copy(isLoading = false)
             }
         }
     }
 
     private fun validateForm(): Boolean {
-        // Validation logic, same as in ProfileSetupViewModel
         val current = _state.value
         var isValid = true
         if (current.fullName.isBlank()) {

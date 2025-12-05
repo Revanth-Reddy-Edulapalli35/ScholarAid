@@ -6,26 +6,7 @@ sealed class ProfileSetupEvent {
     data class FieldOfStudyChanged(val fieldOfStudy: String) : ProfileSetupEvent()
     data class GpaChanged(val gpa: String) : ProfileSetupEvent()
     data class UniversityChanged(val university: String) : ProfileSetupEvent()
-    data class ProfileImageSelected(val imageBytes: ByteArray, val imageUri: String?) : ProfileSetupEvent() {
-        override fun equals(other: Any?): Boolean {
-            if (this === other) return true
-            if (javaClass != other?.javaClass) return false
-
-            other as ProfileImageSelected
-
-            if (!imageBytes.contentEquals(other.imageBytes)) return false
-            if (imageUri != other.imageUri) return false
-
-            return true
-        }
-
-        override fun hashCode(): Int {
-            var result = imageBytes.contentHashCode()
-            result = 31 * result + (imageUri?.hashCode() ?: 0)
-            return result
-        }
-    }
-
+    // Removed ProfileImageSelected event
     object SaveProfile : ProfileSetupEvent()
     object ClearError : ProfileSetupEvent()
 }

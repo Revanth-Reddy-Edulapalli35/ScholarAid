@@ -1,12 +1,6 @@
 package uk.ac.tees.mad.scholaraid.presentation.settings
 
-import android.net.Uri
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -43,14 +36,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import coil.compose.AsyncImage
 import uk.ac.tees.mad.scholaraid.presentation.profile_setup.ProfileSetupEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,19 +62,6 @@ fun SettingsScreen(
         if (state.errorMessage != null) {
             Toast.makeText(context, state.errorMessage, Toast.LENGTH_LONG).show()
             viewModel.onEvent(ProfileSetupEvent.ClearError)
-        }
-    }
-
-    // Image picker launcher
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri: Uri? ->
-        uri?.let {
-            // Read image into ByteArray and pass to ViewModel
-            val imageBytes = context.contentResolver.openInputStream(it)?.readBytes()
-            if (imageBytes != null) {
-                viewModel.onEvent(ProfileSetupEvent.ProfileImageSelected(imageBytes, it.toString()))
-            }
         }
     }
 
@@ -117,38 +95,22 @@ fun SettingsScreen(
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                // Profile Image
+                // Default Profile Icon (Non-interactive)
                 Box(
                     modifier = Modifier
                         .size(120.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .clickable(enabled = !state.isLoading) {
-                            imagePickerLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
+                        .clip(MaterialTheme.shapes.medium),
                     contentAlignment = Alignment.Center
                 ) {
-                    val imageUrl = state.profileImageUri
-                    if (imageUrl != null) {
-                        AsyncImage(
-                            model = imageUrl,
-                            contentDescription = "Profile Image",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "Placeholder Profile Image",
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.AccountCircle,
+                        contentDescription = "Default Profile Image",
+                        modifier = Modifier.size(100.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
                 Text(
-                    text = "Tap to change image",
+                    text = "Default profile photo",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 8.dp, bottom = 16.dp)
@@ -168,8 +130,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Academic Level & Field of Study (Using the existing fields for re-editing)
-                // You would typically use an ExposedDropdownMenuBox here, but keeping it simple for update logic
+                // Academic Level
                 OutlinedTextField(
                     value = state.academicLevel,
                     onValueChange = { viewModel.onEvent(ProfileSetupEvent.AcademicLevelChanged(it)) },
@@ -181,6 +142,7 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Field of Study
                 OutlinedTextField(
                     value = state.fieldOfStudy,
                     onValueChange = { viewModel.onEvent(ProfileSetupEvent.FieldOfStudyChanged(it)) },

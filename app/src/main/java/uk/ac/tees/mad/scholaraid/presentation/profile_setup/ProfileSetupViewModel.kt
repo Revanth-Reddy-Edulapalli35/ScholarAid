@@ -10,7 +10,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
-import uk.ac.tees.mad.scholaraid.domain.repository.SupabaseImageRepository
 import uk.ac.tees.mad.scholaraid.domain.repository.UserRepository
 import uk.ac.tees.mad.scholaraid.util.Resource
 import javax.inject.Inject
@@ -19,7 +18,6 @@ import javax.inject.Inject
 class ProfileSetupViewModel @Inject constructor(
     private val userRepository: UserRepository,
     private val firebaseAuth: FirebaseAuth,
-    private val imageRepository: SupabaseImageRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileSetupState())
@@ -51,15 +49,7 @@ class ProfileSetupViewModel @Inject constructor(
             is ProfileSetupEvent.UniversityChanged -> {
                 _state.update { it.copy(university = event.university) }
             }
-            is ProfileSetupEvent.ProfileImageSelected -> {
-                _state.update { it.copy(
-                    profileImageBytes = event.imageBytes,
-                    profileImageUri = event.imageUri
-                ) }
-            }
-            // FIX: Removed TakePhoto and SelectFromGallery
-            // This logic is better handled directly in the UI (Screen)
-            // as it involves permissions and launching ActivityResultLaunchers.
+            // Removed ProfileImageSelected event
             ProfileSetupEvent.SaveProfile -> {
                 saveProfile()
             }
@@ -67,6 +57,7 @@ class ProfileSetupViewModel @Inject constructor(
                 _state.update { it.copy(errorMessage = null) }
             }
 
+            else -> {}
         }
     }
 
@@ -101,31 +92,8 @@ class ProfileSetupViewModel @Inject constructor(
             _state.update { it.copy(isLoading = true) }
 
             try {
-                // FIX: Refactored logic to handle image upload *before* saving profile data.
-                val imageBytes = _state.value.profileImageBytes
-                if (imageBytes != null) {
-                    // 1. If image exists, upload it first
-                    imageRepository.uploadProfileImage(currentUser.uid, imageBytes).collect { result ->
-                        when (result) {
-                            is Resource.Success -> {
-                                // 2. On success, save profile data WITH the new image URL
-                                val profilePhotoUrl = result.data ?: ""
-                                saveProfileData(currentUser, profilePhotoUrl)
-                            }
-                            is Resource.Error -> {
-                                // 3. On failure, stop and show error
-                                _state.update { it.copy(
-                                    isLoading = false,
-                                    errorMessage = result.message ?: "Failed to upload image"
-                                ) }
-                            }
-                            is Resource.Loading -> { }
-                        }
-                    }
-                } else {
-                    // No image to upload, just save the profile data
-                    saveProfileData(currentUser, "")
-                }
+                // Save profile data with empty profile photo URL (default image will be used)
+                saveProfileData(currentUser)
             } catch (e: Exception) {
                 _state.update { it.copy(
                     isLoading = false,
@@ -135,13 +103,12 @@ class ProfileSetupViewModel @Inject constructor(
         }
     }
 
-    // FIX: Created a helper function to save profile data to avoid duplication.
-    private suspend fun saveProfileData(currentUser: FirebaseUser, profilePhotoUrl: String) {
+    private suspend fun saveProfileData(currentUser: FirebaseUser) {
         val userProfile = UserProfile(
             userId = currentUser.uid,
             email = currentUser.email ?: "",
             fullName = _state.value.fullName,
-            profilePhotoUrl = profilePhotoUrl,
+            profilePhotoUrl = "", // Empty string - UI will use default image
             academicLevel = _state.value.academicLevel,
             fieldOfStudy = _state.value.fieldOfStudy,
             gpa = _state.value.gpa,

@@ -4,11 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import uk.ac.tees.mad.scholaraid.data.model.Scholarship
 import uk.ac.tees.mad.scholaraid.domain.repository.ScholarshipRepository
@@ -39,7 +38,6 @@ class SaveViewModel @Inject constructor(
         getSavedScholarships()
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private fun getSavedScholarships() {
         val userId = currentUserId
         if (userId == null) {
@@ -48,26 +46,40 @@ class SaveViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            userRepository.getSavedScholarshipIds(userId)
-                .flatMapLatest { idResult ->
-                    when (idResult) {
-                        is Resource.Loading -> MutableStateFlow(SaveScreenState(isLoading = true))
-                        is Resource.Error -> MutableStateFlow(SaveScreenState(error = idResult.message))
-                        is Resource.Success -> {
-                            val ids = idResult.data ?: emptyList()
-                            if (ids.isEmpty()) {
-                                MutableStateFlow(SaveScreenState(scholarships = emptyList()))
-                            } else {
-                                // Fetch the full scholarship objects
-                                val scholarships = scholarshipRepository.getScholarshipsByIds(ids)
-                                MutableStateFlow(SaveScreenState(scholarships = scholarships))
+            _state.value = SaveScreenState(isLoading = true)
+
+            try {
+                userRepository.getSavedScholarshipIds(userId)
+                    .catch { e ->
+                        _state.value = SaveScreenState(error = e.message ?: "Failed to load saved scholarships")
+                    }
+                    .collect { idResult ->
+                        when (idResult) {
+                            is Resource.Loading -> {
+                                _state.value = SaveScreenState(isLoading = true)
+                            }
+                            is Resource.Error -> {
+                                _state.value = SaveScreenState(error = idResult.message ?: "Failed to load saved scholarships")
+                            }
+                            is Resource.Success -> {
+                                val ids = idResult.data ?: emptyList()
+                                if (ids.isEmpty()) {
+                                    _state.value = SaveScreenState(scholarships = emptyList())
+                                } else {
+                                    // Fetch the full scholarship objects
+                                    try {
+                                        val scholarships = scholarshipRepository.getScholarshipsByIds(ids)
+                                        _state.value = SaveScreenState(scholarships = scholarships)
+                                    } catch (e: Exception) {
+                                        _state.value = SaveScreenState(error = e.message ?: "Failed to load scholarship details")
+                                    }
+                                }
                             }
                         }
                     }
-                }
-                .collect { newState ->
-                    _state.value = newState
-                }
+            } catch (e: Exception) {
+                _state.value = SaveScreenState(error = e.message ?: "An unexpected error occurred")
+            }
         }
     }
 }

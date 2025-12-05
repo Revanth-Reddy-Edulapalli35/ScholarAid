@@ -111,10 +111,10 @@ dependencies {
 
     // Supabase
     //implementation("io.supabase.kt:supabase-kt:2.2.0")
-    implementation(libs.storage.kt)
-    implementation(libs.postgrest.kt)
-    implementation(libs.gotrue.kt)
-    implementation(libs.ktor.client.android)
+//    implementation(libs.storage.kt)
+//    implementation(libs.postgrest.kt)
+//    implementation(libs.gotrue.kt)
+//    implementation(libs.ktor.client.android)
 
     // Camera & Image
     implementation("androidx.camera:camera-camera2:1.3.1")

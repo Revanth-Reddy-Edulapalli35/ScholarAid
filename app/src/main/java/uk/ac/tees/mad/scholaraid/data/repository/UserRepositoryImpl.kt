@@ -7,17 +7,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.tasks.await
-import uk.ac.tees.mad.scholaraid.data.remote.SupabaseConfig
 import uk.ac.tees.mad.scholaraid.domain.model.UserProfile
-import uk.ac.tees.mad.scholaraid.domain.repository.SupabaseImageRepository
 import uk.ac.tees.mad.scholaraid.domain.repository.UserRepository
 import uk.ac.tees.mad.scholaraid.util.Constants
 import uk.ac.tees.mad.scholaraid.util.Resource
 import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
-    private val firestore: FirebaseFirestore,
-    private val imageRepository: SupabaseImageRepository
+    private val firestore: FirebaseFirestore
 ) : UserRepository {
 
     override suspend fun saveUserProfile(userProfile: UserProfile): Flow<Resource<Boolean>> = flow {
@@ -52,13 +49,7 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun getPublicUrl(path: String): String {
-        return "${SupabaseConfig.SUPABASE_URL}/storage/v1/object/public/${SupabaseConfig.STORAGE_BUCKET}/$path"
-    }
-
-    fun uploadProfileImage(userId: String, imageBytes: ByteArray): Flow<Resource<String>> {
-        return imageRepository.uploadProfileImage(userId, imageBytes)
-    }
+    // Removed uploadProfileImage function
 
     override suspend fun updateUserProfile(userProfile: UserProfile): Resource<Boolean> {
         return try {
@@ -71,7 +62,7 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    // --- New Function Implementations ---
+    // --- Scholarship Functions ---
 
     override fun getSavedScholarshipIds(userId: String): Flow<Resource<List<String>>> = flow {
         emit(Resource.Loading())
