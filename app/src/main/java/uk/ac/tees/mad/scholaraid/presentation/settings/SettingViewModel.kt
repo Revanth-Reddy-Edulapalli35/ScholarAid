@@ -23,8 +23,8 @@ class SettingViewModel @Inject constructor(
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
-    private val _state = MutableStateFlow(ProfileSetupState())
-    val state: StateFlow<ProfileSetupState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(SettingsState())
+    val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     private val currentUser = firebaseAuth.currentUser
         ?: throw IllegalStateException("User not logged in or Firebase Auth not initialized.")
@@ -45,19 +45,31 @@ class SettingViewModel @Inject constructor(
                             _state.update {
                                 it.copy(
                                     isLoading = false,
+                                    userEmail = currentUser.email ?: "",
                                     fullName = profile.fullName,
                                     academicLevel = profile.academicLevel,
                                     fieldOfStudy = profile.fieldOfStudy,
                                     gpa = profile.gpa,
-                                    university = profile.university,
-                                    // profileImageUri is not used anymore
+                                    university = profile.university
                                 )
                             }
                         } else {
-                            _state.update { it.copy(isLoading = false, errorMessage = "Profile data not found.") }
+                            _state.update {
+                                it.copy(
+                                    isLoading = false,
+                                    errorMessage = "Profile data not found.",
+                                    userEmail = currentUser.email ?: ""
+                                )
+                            }
                         }
                     }
-                    is Resource.Error -> _state.update { it.copy(isLoading = false, errorMessage = result.message) }
+                    is Resource.Error -> _state.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.message,
+                            userEmail = currentUser.email ?: ""
+                        )
+                    }
                 }
             }
         }
@@ -70,10 +82,8 @@ class SettingViewModel @Inject constructor(
             is ProfileSetupEvent.FieldOfStudyChanged -> _state.update { it.copy(fieldOfStudy = event.fieldOfStudy, fieldOfStudyError = null) }
             is ProfileSetupEvent.GpaChanged -> _state.update { it.copy(gpa = event.gpa) }
             is ProfileSetupEvent.UniversityChanged -> _state.update { it.copy(university = event.university) }
-            // Removed ProfileImageSelected event
             ProfileSetupEvent.SaveProfile -> saveUserProfile()
             ProfileSetupEvent.ClearError -> _state.update { it.copy(errorMessage = null) }
-            else -> {}
         }
     }
 
@@ -83,7 +93,6 @@ class SettingViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, errorMessage = null) }
 
-            // Update profile with empty profile photo URL
             updateProfileData()
         }
     }
@@ -93,7 +102,7 @@ class SettingViewModel @Inject constructor(
             userId = userId,
             email = currentUser.email ?: "",
             fullName = _state.value.fullName,
-            profilePhotoUrl = "", // Empty string - UI will use default image
+            profilePhotoUrl = "", // Empty string - we're using Gravatar now
             academicLevel = _state.value.academicLevel,
             fieldOfStudy = _state.value.fieldOfStudy,
             gpa = _state.value.gpa,
@@ -135,3 +144,25 @@ class SettingViewModel @Inject constructor(
         return isValid
     }
 }
+
+/**
+ * Custom state for Settings screen that includes user email
+ */
+data class SettingsState(
+    val isLoading: Boolean = false,
+    val isSuccess: Boolean = false,
+    val errorMessage: String? = null,
+
+    // User information
+    val userEmail: String = "",
+    val fullName: String = "",
+    val academicLevel: String = "",
+    val fieldOfStudy: String = "",
+    val gpa: String = "",
+    val university: String = "",
+
+    // Form validation
+    val fullNameError: String? = null,
+    val academicLevelError: String? = null,
+    val fieldOfStudyError: String? = null
+)
