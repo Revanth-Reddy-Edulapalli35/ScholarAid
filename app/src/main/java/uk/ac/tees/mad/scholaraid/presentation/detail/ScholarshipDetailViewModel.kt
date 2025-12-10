@@ -14,14 +14,16 @@ import kotlinx.coroutines.launch
 import uk.ac.tees.mad.scholaraid.data.model.Scholarship
 import uk.ac.tees.mad.scholaraid.domain.repository.ScholarshipRepository
 import uk.ac.tees.mad.scholaraid.domain.repository.UserRepository
+import uk.ac.tees.mad.scholaraid.domain.repository.LocalScholarshipRepository
 import uk.ac.tees.mad.scholaraid.util.Resource
 import javax.inject.Inject
 
 @HiltViewModel
 class ScholarshipDetailViewModel @Inject constructor(
     private val scholarshipRepository: ScholarshipRepository,
-    private val userRepository: UserRepository, // Injected UserRepository
-    private val firebaseAuth: FirebaseAuth, // Injected FirebaseAuth
+    private val userRepository: UserRepository,
+    private val localScholarshipRepository: LocalScholarshipRepository,
+    private val firebaseAuth: FirebaseAuth,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -44,39 +46,63 @@ class ScholarshipDetailViewModel @Inject constructor(
 
     private fun fetchScholarshipDetail() {
         viewModelScope.launch {
-            _scholarship.value = scholarshipRepository.getScholarshipById(scholarshipId)
+            // Try to get from remote first, fall back to local if needed
+            val remoteScholarship = scholarshipRepository.getScholarshipById(scholarshipId)
+            if (remoteScholarship != null) {
+                _scholarship.value = remoteScholarship
+            } else {
+                // Try to get from local cache
+                val localScholarship = localScholarshipRepository.isScholarshipSaved(scholarshipId)
+                // Note: We don't store full scholarship data locally unless it's saved
+                // So we might not have the full details locally
+            }
         }
     }
 
     private fun checkIfSaved() {
-        val userId = currentUserId ?: return
+        val userId = currentUserId
 
-        userRepository.getSavedScholarshipIds(userId)
-            .onEach { result ->
-                if (result is Resource.Success) {
-                    _isSaved.value = result.data?.contains(scholarshipId) == true
+        if (userId != null) {
+            // Check remote first
+            userRepository.getSavedScholarshipIds(userId)
+                .onEach { result ->
+                    if (result is Resource.Success) {
+                        _isSaved.value = result.data?.contains(scholarshipId) == true
+                    }
                 }
+                .launchIn(viewModelScope)
+        } else {
+            // If not logged in, check local cache
+            viewModelScope.launch {
+                _isSaved.value = localScholarshipRepository.isScholarshipSaved(scholarshipId)
             }
-            .launchIn(viewModelScope)
+        }
     }
 
     fun toggleSaveStatus() {
         viewModelScope.launch {
-            val userId = currentUserId ?: return@launch
+            val userId = currentUserId
             val currentlySaved = _isSaved.value
+            val currentScholarship = _scholarship.value
 
-            val result = if (currentlySaved) {
-                userRepository.unsaveScholarship(userId, scholarshipId)
+            if (currentlySaved) {
+                // Unsave
+                if (userId != null) {
+                    userRepository.unsaveScholarship(userId, scholarshipId)
+                }
+                localScholarshipRepository.unsaveScholarship(scholarshipId)
+                _isSaved.value = false
             } else {
-                userRepository.saveScholarship(userId, scholarshipId)
+                // Save
+                if (userId != null) {
+                    userRepository.saveScholarship(userId, scholarshipId)
+                }
+                // Save to local cache
+                currentScholarship?.let {
+                    localScholarshipRepository.saveScholarship(it)
+                }
+                _isSaved.value = true
             }
-
-            // The 'checkIfSaved' flow will automatically update the UI
-            // but we can preemptively toggle it for a faster UI response
-            if (result is Resource.Success) {
-                _isSaved.value = !currentlySaved
-            }
-            // In a real app, you'd show a snackbar on Resource.Error
         }
     }
 }

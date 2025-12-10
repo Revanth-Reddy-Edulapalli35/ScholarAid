@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "191068769429",
-    "project_id": "scholaraid-f6222",
-    "storage_bucket": "scholaraid-f6222.firebasestorage.app"
+    "project_number": "305058811390",
+    "project_id": "scholaraid-14c22",
+    "storage_bucket": "scholaraid-14c22.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:191068769429:android:ef80bbe382831878b7df9c",
+        "mobilesdk_app_id": "1:305058811390:android:39e19960e18d99597184af",
         "android_client_info": {
           "package_name": "uk.ac.tees.mad.scholaraid"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCsPSfo7kIGNf8B_Bw9jAdmiTGrLh7CuAM"
+          "current_key": "AIzaSyCn5VF7VF4Ya99jPON7ty_mEEErirlZ_1Q"
         }
       ],
       "services": {
